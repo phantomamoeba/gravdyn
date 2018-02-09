@@ -119,7 +119,6 @@ def plot_f_g(r_i,r_f,gridsize,a,gamma):
     :return:
     '''
 
-    #grid = np.linspace(r_i,r_f,gridsize)
     grid = np.logspace(np.log10(r_i), np.log10(r_f), gridsize)
     psd = [] #phase space denisty f(E)
     dos = [] #densiy of states g(E)
@@ -128,16 +127,28 @@ def plot_f_g(r_i,r_f,gridsize,a,gamma):
         psd.append(df_f(r,a=1,gamma=gamma))
         dos.append(df_g(r,a=1,gamma=gamma))
 
-    plt.title("Phase Space Density and Density of States (Prob#2 & 3)\n$\gamma$=3/2")
-    plt.xlabel("$\mathscr{E}$")
+    psd = np.array(psd)
+    dos = np.array(dos)
+
+    plt.title("Phase Space Density and Density of States (Prob#2,3,4)\n$\gamma$=3/2")
+
     plt.ylabel("$log_{10}(func)$")
     #plt.gca().set_yscale("log")
-    plt.plot(-1*E_c(grid,a,gamma),np.log10(psd),label=r'f($\mathscr{E}$)')
-    plt.plot(-1 * E_c(grid, a, gamma), np.log10(dos),label=r'g($\mathscr{E}$)')
+    #since script E = -E*a/(2GM), mult by -0.5 to scale
+    if True:
+        plt.xlabel("$\mathscr{E}$")
+        plt.plot(-0.5 * E_c(grid,a,gamma),np.log10(psd),label=r'f($\mathscr{E}$)')
+        plt.plot(-0.5 * E_c(grid, a, gamma), np.log10(dos),label=r'g($\mathscr{E}$)')
+        plt.plot(-0.5 * E_c(grid,a,gamma),np.log10(psd*dos),label=r'f($\mathscr{E}$) $\cdot$ g($\mathscr{E}$)')
+    else:
+        plt.xlabel("r")
+        #plt.plot(grid, psd, label=r'f($\mathscr{E}$)')
+        #plt.plot(grid, dos, label=r'g($\mathscr{E}$)')
+        plt.plot(grid, psd * dos, label=r'f($\mathscr{E}$) $\cdot$ g($\mathscr{E}$)')
 
     plt.legend(loc='upper center', bbox_to_anchor=(0.5, 0.98), borderaxespad=0)
 
-    plt.savefig("dd_hw1p2_3.png")
+    #plt.savefig("dd_hw1p234.png")
     plt.show()
 
 
@@ -147,7 +158,7 @@ def main():
     #will get a warning about convergence at the 0 limit, but is okay
     #plot_sigma(10**(-5),100,1000,1,1.5)
 
-    plot_f_g(10**-5, 100, gridsize=1000, a=1, gamma=1.5)
+    plot_f_g(10**-5, 100000, gridsize=1000, a=1, gamma=1.5)
 
 if __name__ == '__main__':
     main()
