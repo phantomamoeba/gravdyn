@@ -92,14 +92,26 @@ def f_integrand(psi,E,r,gamma,a):
 
 
 
-def df_f(r,a,gamma):
+def df_f(r,a,gamma):  #distribution function of f(E)
 
     psi = Psi(r,a,gamma)
     E = E_c(r,a,gamma)
     return (3.-gamma)*M / (2. * (2.*np.pi*G*M*a)**(1.5)) * quad(f_integrand,0,E,args=(E,r,gamma,a))[0]
 
 
-def plot_f(r_i,r_f,step,a,gamma):
+def g_integrand(psi,E,r,gamma,a):
+    y = y_func(r,a,gamma)
+    return y**(gamma+1)/((1-y)**4.) * np.sqrt(psi-E)
+
+
+def df_g(r,a,gamma): #distribution function of g(E)
+    psi = Psi(r,a,gamma)
+    psi_0 = Psi(0,a,gamma)
+    E = E_c(r,a,gamma)
+    return 16.*np.pi**2.*np.sqrt(2.*G*M*a**5)*quad(g_integrand,E,psi_0,args=(E,r,gamma,a))[0]
+
+
+def plot_f_g(r_i,r_f,gridsize,a,gamma):
     '''
     :param r:
     :param a:
@@ -107,19 +119,25 @@ def plot_f(r_i,r_f,step,a,gamma):
     :return:
     '''
 
-    grid = np.arange(r_i,r_f,step)
-    psd = []
+    #grid = np.linspace(r_i,r_f,gridsize)
+    grid = np.logspace(np.log10(r_i), np.log10(r_f), gridsize)
+    psd = [] #phase space denisty f(E)
+    dos = [] #densiy of states g(E)
     #would be more efficient to use matrix operations but this is easier to read and fast enough
     for r in grid:
         psd.append(df_f(r,a=1,gamma=gamma))
+        dos.append(df_g(r,a=1,gamma=gamma))
 
-    plt.title("Phase Space Density (Prob#2)\n$\gamma$=3/2")
-    plt.xlabel("Binding E")
-    plt.ylabel("log(density of states)")
+    plt.title("Phase Space Density and Density of States (Prob#2 & 3)\n$\gamma$=3/2")
+    plt.xlabel("$\mathscr{E}$")
+    plt.ylabel("$log_{10}(func)$")
     #plt.gca().set_yscale("log")
-    plt.plot(-1*E_c(grid,a,gamma),np.log10(psd))
+    plt.plot(-1*E_c(grid,a,gamma),np.log10(psd),label=r'f($\mathscr{E}$)')
+    plt.plot(-1 * E_c(grid, a, gamma), np.log10(dos),label=r'g($\mathscr{E}$)')
 
-    plt.savefig("dd_hw1p2.png")
+    plt.legend(loc='upper center', bbox_to_anchor=(0.5, 0.98), borderaxespad=0)
+
+    plt.savefig("dd_hw1p2_3.png")
     plt.show()
 
 
@@ -129,7 +147,7 @@ def main():
     #will get a warning about convergence at the 0 limit, but is okay
     #plot_sigma(10**(-5),100,1000,1,1.5)
 
-    plot_f(0.00, 100, step=0.01, a=1, gamma=1.5)
+    plot_f_g(10**-5, 100, gridsize=1000, a=1, gamma=1.5)
 
 if __name__ == '__main__':
     main()
