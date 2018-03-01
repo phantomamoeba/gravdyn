@@ -1,15 +1,15 @@
-#test
+__author__ = 'Dustin Davis'
+#AST381 GravDyn HW01
+#February 13, 2018
+
 
 import numpy as np
 from scipy.integrate import quad
 import matplotlib.pyplot as plt
 
-
-
 G = 1
 M = 1
 a = 1
-
 
 
 def sigma_integrand(r,a,gamma):
@@ -35,13 +35,6 @@ def rvd(r,a,gamma):
 
 
 def plot_sigma(r_i,r_f,num,a,gamma):
-    '''
-    :param r:
-    :param a:
-    :param g:
-    :return:
-    '''
-
     #grid = np.arange(r_i,r_f,step)
     grid = np.logspace(np.log10(r_i),np.log10(r_f),num=num,base=10.0)
     sigma = []
@@ -58,7 +51,6 @@ def plot_sigma(r_i,r_f,num,a,gamma):
     plt.savefig("dd_hw1p1.png")
 
     plt.show()
-
 
 
 def Phi(r,a,gamma):
@@ -114,12 +106,6 @@ def df_g(r,a,gamma): #distribution function of g(E)
 
 
 def plot_f_g(r_i,r_f,gridsize,a,gamma):
-    '''
-    :param r:
-    :param a:
-    :param g:
-    :return:
-    '''
 
     grid = np.logspace(np.log10(r_i), np.log10(r_f), gridsize)
     psd = [] #phase space denisty f(E)
@@ -160,7 +146,6 @@ def plot_f_g(r_i,r_f,gridsize,a,gamma):
     #plt.plot(grid, psd * dos)
 
 
-
     plt.savefig("dd_hw1p234.png")
     plt.show()
 
@@ -169,9 +154,8 @@ def plot_f_g(r_i,r_f,gridsize,a,gamma):
 def main():
 
     #will get a warning about convergence at the 0 limit, but is okay
-    #plot_sigma(10**(-5),100,1000,1,1.5)
-
-    plot_f_g(10**-10, 10**4, gridsize=1000, a=1, gamma=1.5)
+    plot_sigma(10**(-5),100,1000,1,1.5)
+    plot_f_g(10**-10, 10**2, gridsize=1000, a=1, gamma=1.5)
 
 if __name__ == '__main__':
     main()
