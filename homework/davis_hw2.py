@@ -9,13 +9,15 @@ import matplotlib.pyplot as plt
 
 
 NFW_rho_0 = 4.0 #units of rho_2
-Sigma_T = 6.6524*10**(-25) #cm^2
-GeV_to_grams = 1.783*10**-24
-mass_DM = 1.0 #GeV
-m_p =  mass_DM * GeV_to_grams
-h = 0.7
+#GeV_to_grams = 1.783*10**-24
+#mass_DM = 1.0 #GeV
+#m_p =  mass_DM * GeV_to_grams
+h = 0.71
+H0 = 2.2683*10**(-18) #s^-1
+H_tdyn = 0.1/H0
 M_sun = 1.989*10**33 #grams
-
+Sigma_T_m = 1.0 #cm^2/g or could use 1/12  that is, Sigma_T / m_p
+delta_vir = 200.
 
 def nfw_density(r, R_s, rho_s):
     """
@@ -43,9 +45,9 @@ def gamma(r,R_s,rho_s):
     :return: gamma(r)
     """
 
-    return nfw_density(r,R_s,rho_s)*Sigma_T/m_p*sigma_rms(r)
+    return nfw_density(r,R_s,rho_s)*Sigma_T_m*sigma_rms(r)
 
-def log_conc_parm(log_mass,a=0.95,b=-0.101):
+def log_concentration(log_mass,a=0.95,b=-0.101):
     """
     assume delta = 200, redshift = 0 for the a, b defaults
     :param mass:
@@ -56,10 +58,10 @@ def log_conc_parm(log_mass,a=0.95,b=-0.101):
     return a + b*np.log((10**log_mass)/((10**12)/h))
 
 #R_s
-def scale_radius(log_c, r_vir):
-    return r_vir/(10**log_c)
+def scale_radius(log_c, log_mass):
 
-
+    rho_vir = 1.0 #todo: fix this
+    return (3/(4*np.pi)*(10**log_mass)/(delta_vir*rho_vir))**(0.333)/(10**log_c)
 
 
 
@@ -67,14 +69,14 @@ def main():
     log_mass = np.arange(10.,16.,1.)
     r_vir = np.zeros(log_mass.shape) + 1.
     rho_s = np.zeros(log_mass.shape) + 1. #just for now
-    R_s = scale_radius(log_conc_parm(log_mass),r_vir)#   np.zeros(log_mass.shape) + 1. #just for now
+    R_s = scale_radius(log_concentration(log_mass),r_vir)#   np.zeros(log_mass.shape) + 1. #just for now
 
     r_grid = np.logspace(-4, 10,num=100)
     norm = plt.Normalize()
     color = plt.cm.hsv(norm(np.arange(len(log_mass))))
 
     plt.figure()
-    plt.title("DM Scattering Rate vs Radius\n" + "h = %g, $\m_p$=%g" %(h,mass_DM))
+    plt.title("DM Scattering Rate vs Radius\n" + "Concordance Cosmology, h = %g" %(h))
     plt.xlabel("$Log_{10}(r/R_s)$")
     plt.ylabel(r"$\Gamma(r)$ / ($\sigma_{T}$/m)")
 
