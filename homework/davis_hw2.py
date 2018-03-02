@@ -14,40 +14,21 @@ NFW_rho_0 = 4.0 #units of rho_2
 #m_p =  mass_DM * GeV_to_grams
 h = 0.71
 H0 = 2.2683*10**(-18) #s^-1
-H_tdyn = 0.1/H0
+H_tdyn = 0.1/H0 #seconds ... the rate would be H0/0.1 or 10*H0
 M_sun = 1.989*10**33 #grams
 Sigma_T_m = 1.0 #cm^2/g or could use 1/12  that is, Sigma_T / m_p
 delta_vir = 200.
-
-def nfw_density(r, R_s, rho_s):
-    """
-
-    :param r: radius
-    :param R_s:  scale radius (where log slope of density is -2) (aka r_2)
-    :param rho_s:  scale density (at the scale radius) (aka rho_2)
-    :return: denisty in g/cm^3
-    """
-
-    return NFW_rho_0 / ((r / R_s) * (1. + r / R_s) ** 2) * rho_s #units of rho_2
-
-#local velocity dispersion
-def sigma_rms(r):
-    return 1.
+rho_crit = 1.8788*10**(-29)*h**2 #g/cm^3
+G = 6.67428*10**(-8)
+#USE c_200, r_200, etc not
 
 
-#scattering rate
-def gamma(r,R_s,rho_s):
-    """
 
-    :param r:
-    :param R_s:
-    :param rho_s:
-    :return: gamma(r)
-    """
+def delta_c_nfw(log_mass):
+    c = 10**(log_concentration(log_mass))
+    return 200./3. * (c**3.)/(np.log(1+c) - (c/(1+c)) ) #log = ln
 
-    return nfw_density(r,R_s,rho_s)*Sigma_T_m*sigma_rms(r)
-
-def log_concentration(log_mass,a=0.95,b=-0.101):
+def log_concentration(log_mass,a=0.905,b=-0.101): #eqn 8
     """
     assume delta = 200, redshift = 0 for the a, b defaults
     :param mass:
@@ -55,23 +36,68 @@ def log_concentration(log_mass,a=0.95,b=-0.101):
     :param b:
     :return:
     """
-    return a + b*np.log((10**log_mass)/((10**12)/h))
+    #return a + b*np.log10( h*(10**log_mass)/ 10.**12.) #want log10 here
+    return a + b*(np.log10(h)+log_mass-12)
 
-#R_s
-def scale_radius(log_c, log_mass):
 
-    rho_vir = 1.0 #todo: fix this
-    return (3/(4*np.pi)*(10**log_mass)/(delta_vir*rho_vir))**(0.333)/(10**log_c)
 
+def scale_radius(log_mass): #based on r_200
+    """
+
+    :param log_mass: in M_sun
+    :return: in cm
+    """
+    c = 10**(log_concentration(log_mass))
+    r_200 = ((M_sun * 10 ** log_mass) / (4 / 3 * np.pi * rho_crit *200.)) ** (1. / 3.)  # yes log = ln
+    return r_200/c
+
+def nfw_density(log_mass,r):
+    """
+    :param r: radius
+    :param R_s:  scale radius (where log slope of density is -2) (aka r_2)
+    :return: denisty in g/cm^3
+    """
+
+    R_s = scale_radius(log_mass)
+    return rho_crit * delta_c_nfw(log_mass)/((r/R_s)*(1+r/R_s)**2)
+
+
+def alpha(rho,r):
+    return -1* np.log(rho)/np.log(r)
+
+#local velocity dispersion, use Jeans
+#todo: **** no ... should be the mass inside radius r
+def sigma_rms(log_mass, r, rho):
+    v2 = G*M_sun*10**log_mass/r
+    s2 = v2/alpha(rho,r)
+    return np.sqrt(s2)
+
+
+#scattering rate
+def gamma(log_mass,r):
+    """
+    """
+    rho = nfw_density(log_mass,r)
+    return rho*Sigma_T_m*sigma_rms(log_mass,r,rho)
+
+
+
+def interior_mass_integrand(r,log_mass):
+    return 4.*np.pi*(nfw_density(log_mass,r))*r**2
+
+def interior_mass(log_mass,r):
+    return quad(interior_mass_integrand, 0, r,args=(log_mass))
 
 
 def main():
-    log_mass = np.arange(10.,16.,1.)
-    r_vir = np.zeros(log_mass.shape) + 1.
-    rho_s = np.zeros(log_mass.shape) + 1. #just for now
-    R_s = scale_radius(log_concentration(log_mass),r_vir)#   np.zeros(log_mass.shape) + 1. #just for now
+    log_mass = np.arange(10.,16.,1.) #M_vir , virial mass
+   # R_s = scale_radius(log_mass)
 
-    r_grid = np.logspace(-4, 10,num=100)
+   # print(R_s/(3.086e18))
+
+    r_grid = np.logspace(-1, 2,num=100)
+    m_grid10 = interior_mass(log_mass[0],r_grid[0])[0]
+
     norm = plt.Normalize()
     color = plt.cm.jet(norm(np.arange(len(log_mass))))
 
@@ -82,16 +108,16 @@ def main():
     plt.gca().set_yscale("log")
 
 
-    plt.axhline(y=H0,linestyle="--")
+    plt.axhline(y=H0,linestyle="--",color='r')
     plt.gca().annotate(r"$H_{0}$", xy=(0.8*10**10,H0),
-                       xytext=(0.9*10**10,H0*10))
+                       xytext=(0.6*10**10,H0/100))
 
-    plt.axhline(y=0.1*H0, linestyle="--")
-    plt.gca().annotate(r"$0.1 H_{0}$", xy=(0.8*10**10, 0.1*H0),
-                       xytext=(0.9*10**10, H0 / 1000))
+    plt.axhline(y=1/H_tdyn, linestyle="--")
+    plt.gca().annotate(r"$10H_{0}$", xy=(0.8*10**10, 1/H_tdyn),
+                       xytext=(0.6*10**10,1/H_tdyn *10 ))
 
     for i in range(len(log_mass)):
-        plt.plot(r_grid,gamma(r_grid,R_s[i],rho_s[i]),color=color[i],label="$10^{%d}M_{\odot}$"%log_mass[i])
+        plt.plot(r_grid,gamma(log_mass[i],r_grid),color=color[i],label="$10^{%d}M_{\odot}$"%log_mass[i])
 
     plt.legend(loc='upper right', bbox_to_anchor=(0.98, 0.98), borderaxespad=0)
 
