@@ -73,7 +73,7 @@ def main():
 
     r_grid = np.logspace(-4, 10,num=100)
     norm = plt.Normalize()
-    color = plt.cm.hsv(norm(np.arange(len(log_mass))))
+    color = plt.cm.jet(norm(np.arange(len(log_mass))))
 
     plt.figure()
     plt.title("DM Scattering Rate vs Radius\n" + "Concordance Cosmology, h = %g" %(h))
@@ -86,15 +86,14 @@ def main():
     plt.gca().annotate(r"$H_{0}$", xy=(0.8*10**10,H0),
                        xytext=(0.9*10**10,H0*10))
 
-
     plt.axhline(y=0.1*H0, linestyle="--")
     plt.gca().annotate(r"$0.1 H_{0}$", xy=(0.8*10**10, 0.1*H0),
                        xytext=(0.9*10**10, H0 / 1000))
 
     for i in range(len(log_mass)):
-        plt.plot(r_grid,gamma(r_grid,R_s[i],rho_s[i]),color=color[i])
+        plt.plot(r_grid,gamma(r_grid,R_s[i],rho_s[i]),color=color[i],label="$10^{%d}M_{\odot}$"%log_mass[i])
 
-
+    plt.legend(loc='upper right', bbox_to_anchor=(0.98, 0.98), borderaxespad=0)
 
     #plt.savefig("dd_hw2.png")
     plt.show()
