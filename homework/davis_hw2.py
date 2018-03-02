@@ -68,9 +68,10 @@ def alpha(rho,r):
 #local velocity dispersion, use Jeans
 #todo: **** no ... should be the mass inside radius r
 def sigma_rms(log_mass, r, rho):
-    v2 = G*M_sun*10**log_mass/r
-    s2 = v2/alpha(rho,r)
-    return np.sqrt(s2)
+   # v2 = G*M_sun*10**log_mass/r
+   # s2 = v2/alpha(rho,r)
+   # return np.sqrt(s2)
+   return dispersion(log_mass,r)
 
 
 #scattering rate
@@ -81,22 +82,32 @@ def gamma(log_mass,r):
     return rho*Sigma_T_m*sigma_rms(log_mass,r,rho)
 
 
-
 def interior_mass_integrand(r,log_mass):
+    #expects r in cm
     return 4.*np.pi*(nfw_density(log_mass,r))*r**2
 
 def interior_mass(log_mass,r):
-    return quad(interior_mass_integrand, 0, r,args=(log_mass))
+    #expects r in cm
+    return quad(interior_mass_integrand, 0, r,args=(log_mass))[0]
+
+def dispersion_integrand(r,log_mass):
+    return G*interior_mass(log_mass,r)/(r**2)*nfw_density(log_mass,r)
+
+def dispersion(log_mass,r):
+    return np.sqrt(quad(dispersion_integrand,0,r,args=(log_mass))/nfw_density(log_mass,r))[0]
 
 
 def main():
+
+  #  g = gamma(10,3.086e18)
+
     log_mass = np.arange(10.,16.,1.) #M_vir , virial mass
    # R_s = scale_radius(log_mass)
 
    # print(R_s/(3.086e18))
 
     r_grid = np.logspace(-1, 2,num=100)
-    m_grid10 = interior_mass(log_mass[0],r_grid[0])[0]
+   # m_grid10 = interior_mass(log_mass[0],r_grid[0])[0]
 
     norm = plt.Normalize()
     color = plt.cm.jet(norm(np.arange(len(log_mass))))
@@ -117,7 +128,11 @@ def main():
                        xytext=(0.6*10**10,1/H_tdyn *10 ))
 
     for i in range(len(log_mass)):
-        plt.plot(r_grid,gamma(log_mass[i],r_grid),color=color[i],label="$10^{%d}M_{\odot}$"%log_mass[i])
+        g = np.zeros(r_grid.shape)
+        for j in range(len(r_grid)):
+            g[j] = gamma(log_mass[i],r_grid[j])
+
+        plt.plot(r_grid,g,color=color[i],label="$10^{%d}M_{\odot}$"%log_mass[i])
 
     plt.legend(loc='upper right', bbox_to_anchor=(0.98, 0.98), borderaxespad=0)
 
