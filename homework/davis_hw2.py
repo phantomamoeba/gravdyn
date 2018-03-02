@@ -78,8 +78,18 @@ def main():
     plt.figure()
     plt.title("DM Scattering Rate vs Radius\n" + "Concordance Cosmology, h = %g" %(h))
     plt.xlabel("$Log_{10}(r/R_s)$")
-    plt.ylabel(r"$\Gamma(r)$ / ($\sigma_{T}$/m)")
+    plt.ylabel(r"$\Gamma(r)$ [$s^{-1}$]")
+    plt.gca().set_yscale("log")
 
+
+    plt.axhline(y=H0,linestyle="--")
+    plt.gca().annotate(r"$H_{0}$", xy=(0.8*10**10,H0),
+                       xytext=(0.9*10**10,H0*10))
+
+
+    plt.axhline(y=0.1*H0, linestyle="--")
+    plt.gca().annotate(r"$0.1 H_{0}$", xy=(0.8*10**10, 0.1*H0),
+                       xytext=(0.9*10**10, H0 / 1000))
 
     for i in range(len(log_mass)):
         plt.plot(r_grid,gamma(r_grid,R_s[i],rho_s[i]),color=color[i])
