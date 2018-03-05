@@ -5,6 +5,7 @@ __author__ = 'Dustin Davis'
 
 import numpy as np
 from scipy.integrate import quad
+from scipy.integrate import nquad
 import matplotlib.pyplot as plt
 
 
@@ -59,19 +60,21 @@ def nfw_density(log_mass,r):
     """
 
     R_s = scale_radius(log_mass)
-    return rho_crit * delta_c_nfw(log_mass)/((r/R_s)*(1+r/R_s)**2)
+    rho = rho_crit * delta_c_nfw(log_mass) / ((r / R_s) * (1 + r / R_s) ** 2)
+
+    #if log_mass == 10:
+    #    print("%d  %d  %0.2g" % (log_mass, r / 3.086e18, rho))
+
+    return rho
 
 
-def alpha(rho,r):
-    return -1* np.log(rho)/np.log(r)
+#def alpha(rho,r):
+#    return -1* np.log10(rho)/np.log10(r)
 
-#local velocity dispersion, use Jeans
-#todo: **** no ... should be the mass inside radius r
-def sigma_rms(log_mass, r, rho):
-   # v2 = G*M_sun*10**log_mass/r
-   # s2 = v2/alpha(rho,r)
-   # return np.sqrt(s2)
-   return dispersion(log_mass,r)
+def sigma_rms(log_mass, r): #in cm/s
+    sigma = dispersion(log_mass, r)
+   # print ("%d  %d  %0.2g" %(log_mass, r/3.086e18, sigma))
+    return sigma
 
 
 #scattering rate
@@ -79,64 +82,91 @@ def gamma(log_mass,r):
     """
     """
     rho = nfw_density(log_mass,r)
-    return rho*Sigma_T_m*sigma_rms(log_mass,r,rho)
+    return rho*Sigma_T_m*sigma_rms(log_mass,r)
 
 
-def interior_mass_integrand(r,log_mass):
+def interior_mass_integrand(r,log_mass): #without the 4pi and G ... moved out front of outer integrand
     #expects r in cm
-    return 4.*np.pi*(nfw_density(log_mass,r))*r**2
+    return (nfw_density(log_mass,r))*r**2
 
 def interior_mass(log_mass,r):
     #expects r in cm
-    return quad(interior_mass_integrand, 0, r,args=(log_mass))[0]
+    return quad(interior_mass_integrand, 0, r, args=(log_mass))[0]
 
-def dispersion_integrand(r,log_mass):
-    return G*interior_mass(log_mass,r)/(r**2)*nfw_density(log_mass,r)
+#def dispersion_integrand(r_exterior,log_mass):
+#    return nfw_density(log_mass,r_exterior)/(r_exterior**2)*quad(interior_mass_integrand, 0, r, args=(log_mass))[0]
 
-def dispersion(log_mass,r):
-    return np.sqrt(quad(dispersion_integrand,0,r,args=(log_mass))/nfw_density(log_mass,r))[0]
 
+def double_integrand(r1,r2,log_mass): #r1 inner upper limit, r2 outer lower limit
+    x = nfw_density(log_mass,r2)/(r2**2.) * nfw_density(log_mass,r1)*r1**2.
+    return x
+
+def limits_r2(r2,log_mass): #outside
+    r_200 = scale_radius(log_mass) * 10**(log_concentration(log_mass))
+ #   return [r2, np.inf]
+    return [r2, 100*r_200] #can't use np.inf (won't actually converge, so pick a big number)
+
+def limits_r1(r1,dummy): #inside
+    return [0, r1]
+
+def dbl_integral(r,log_mass):
+    options = {'limit': 100}
+    #limits .. inner first, then outer
+    x = nquad(double_integrand, [limits_r1, limits_r2(r,log_mass)],opts=[options,options],args=(log_mass,))[0]
+
+    #if log_mass == 10:
+    #    print()
+    return x
+
+def dispersion(log_mass,r):#cm/s
+
+    nfw_density_at_r = nfw_density(log_mass,r)
+    sigma = np.sqrt(4.*np.pi*G/nfw_density_at_r*dbl_integral(r,log_mass))
+
+    if log_mass == 10:
+        print("%d  %d  %0.2g" % (log_mass, r / 3.086e18, sigma))
+    return sigma
+
+# print("%d  %d  %0.2g" % (log_mass, r / 3.086e18, rho))
 
 def main():
-
-  #  g = gamma(10,3.086e18)
-
     log_mass = np.arange(10.,16.,1.) #M_vir , virial mass
-   # R_s = scale_radius(log_mass)
-
-   # print(R_s/(3.086e18))
-
-    r_grid = np.logspace(-1, 2,num=100)
-   # m_grid10 = interior_mass(log_mass[0],r_grid[0])[0]
+    #r_grid = np.logspace(-2, 2,num=50) #1/10 to 100x the scale_radius
+    r_grid = np.logspace(18,25,num=20) #cm
 
     norm = plt.Normalize()
     color = plt.cm.jet(norm(np.arange(len(log_mass))))
 
     plt.figure()
     plt.title("DM Scattering Rate vs Radius\n" + "Concordance Cosmology, h = %g" %(h))
-    plt.xlabel("$Log_{10}(r/R_s)$")
+    plt.xlabel("r [kpc]")
     plt.ylabel(r"$\Gamma(r)$ [$s^{-1}$]")
     plt.gca().set_yscale("log")
+    plt.gca().set_xscale("log")
 
 
     plt.axhline(y=H0,linestyle="--",color='r')
-    plt.gca().annotate(r"$H_{0}$", xy=(0.8*10**10,H0),
-                       xytext=(0.6*10**10,H0/100))
+    plt.gca().annotate(r"$H_{0}$", xy=(10**-3,H0),
+                       xytext=(10**-3,H0/5))
 
     plt.axhline(y=1/H_tdyn, linestyle="--")
-    plt.gca().annotate(r"$10H_{0}$", xy=(0.8*10**10, 1/H_tdyn),
-                       xytext=(0.6*10**10,1/H_tdyn *10 ))
+    plt.gca().annotate(r"$10H_{0}$", xy=(10**-3, 1/H_tdyn),
+                       xytext=(10**-3,1/H_tdyn*2))
 
+    #this is a dumb way to do this, but expedient to code
+    #at the least should re-work to just extend mass shell by shell rather than fully recompute each time
     for i in range(len(log_mass)):
         g = np.zeros(r_grid.shape)
+        #radii = r_grid*scale_radius(log_mass[i])
+        radii = r_grid
         for j in range(len(r_grid)):
-            g[j] = gamma(log_mass[i],r_grid[j])
+            g[j] = gamma(log_mass[i],radii[j])
 
-        plt.plot(r_grid,g,color=color[i],label="$10^{%d}M_{\odot}$"%log_mass[i])
+        plt.plot(r_grid/(3.086e21),g,color=color[i],label="$10^{%d}M_{\odot}$"%log_mass[i])
 
-    plt.legend(loc='upper right', bbox_to_anchor=(0.98, 0.98), borderaxespad=0)
+    plt.legend(loc='lower left', bbox_to_anchor=(0.02, 0.02), borderaxespad=0)
 
-    #plt.savefig("dd_hw2.png")
+    plt.savefig("dd_hw2.png")
     plt.show()
 
 
