@@ -15,17 +15,21 @@ a_kpc=35
 a_cm=a_kpc*1e3*pc2cm
 M_tot_M_sun = 1e12
 M_tot_grams = M_tot_M_sun * M_sun2grams
-TotalNumParticles = 1e6
+TotalNumParticles = 1e6 #all particles of the same mass
 
+
+#fixed seed so repeatable (for testing)
+np.random.random(1138)
 
 def rng(seed=None): #simple uniform (0,1)
-    if seed is not None:
-        np.random.random(seed)
     return np.random.random()
 
-def random_on_sphere(seed=None):
-    theta = np.arccos(2*rng(seed)-1)
-    phi = 2.0*np.pi*rng(seed)
+def random_radius():#todo using Hernquist profile
+    pass
+
+def random_on_sphere():
+    theta = np.arccos(2*rng()-1)
+    phi = 2.0*np.pi*rng()
     return theta, phi
 
 def rtp2xyz(theta,phi,radius=1):
@@ -34,7 +38,17 @@ def rtp2xyz(theta,phi,radius=1):
     z = radius * np.cos(theta)
     return x,y,z
 
+
+
+
+
 def main():
+
+    #for each particle
+    #get its radius, then angular position
+    #then translate to cartesian
+    #get its velocity
+    #write out to file (x,y,z,v_x,v_y,v_z)
 
     pass
 
