@@ -123,8 +123,8 @@ def dispersion(log_mass,r):#cm/s
     nfw_density_at_r = nfw_density(log_mass,r)
     sigma = np.sqrt(4.*np.pi*G/nfw_density_at_r*dbl_integral(r,log_mass))
 
-    if log_mass == 10:
-        print("%d  %d  %0.2g" % (log_mass, r / 3.086e18, sigma))
+   # if log_mass == 10:
+   #     print("%d  %d  %0.2g" % (log_mass, r / 3.086e18, sigma))
     return sigma
 
 # print("%d  %d  %0.2g" % (log_mass, r / 3.086e18, rho))
