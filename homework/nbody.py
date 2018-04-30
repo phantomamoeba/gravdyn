@@ -16,7 +16,7 @@ a_kpc=35
 a_cm=a_kpc*1e3*pc2cm #scale length aka r_s
 M_tot_M_sun = 1e12
 M_tot_grams = M_tot_M_sun * M_sun2grams
-TotalNumParticles = 1e6 #all particles of the same mass
+TotalNumParticles = int(1e6) #all particles of the same mass
 ParticleMass = M_tot_grams / TotalNumParticles
 G = 6.67428*10**(-8) #cgs
 rho_0 = 1.0 #should be something like rho_200? or rhocrit?
@@ -109,12 +109,21 @@ def main():
     #write out to file (x,y,z,v_x,v_y,v_z)
 
     #get all particle coords
+    print("Building particle locations (~15-20seconds) ...")
     particles = []
     for i in range(int(TotalNumParticles)):
         particles.append(Particle())
+       # particles.append(Particle())
         #print(particles[i].spherical())
         #print(particles[i])
 
+    # r_grid = np.linspace(1,1e6*pc2cm,10000)
+    # plt.plot(r_grid / pc2cm, mass_enclosed(r_grid) / M_tot_grams)
+    # plt.show()
+    #
+    # me = [p.mass_enclosed/M_sun2grams for p in particles]
+    # plt.hist(np.array(me),bins=1000,cumulative=True,normed=True)
+    # plt.show()
 
 
 if __name__ == '__main__':
