@@ -111,7 +111,7 @@ def pdf_sample_accept_reject(pdf, samples=1, x_min=0, x_max=1, pdf_probe=int(1e3
     #if y is "under" the pdf, accept the position, if not, reject it
 
     #Hernquist is monatonic, but for future use, the pdf might not be
-    #get the boundaries of the pdf
+    #get the boundaries of the pdf (between pdf(x_min) and pdf(x_max)
     pdf_min = 0.
     pdf_max = pdf(np.linspace(x_min, x_max, pdf_probe)).max()
 
