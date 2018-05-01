@@ -9,6 +9,7 @@ import numpy as np
 from scipy.integrate import quad
 from scipy.integrate import nquad
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 pc2cm = 3.08567758e18
 M_sun2grams = 1.989e33
@@ -16,10 +17,13 @@ a_kpc=35
 a_cm=a_kpc*1e3*pc2cm #scale length aka r_s
 M_tot_M_sun = 1e12
 M_tot_grams = M_tot_M_sun * M_sun2grams
-TotalNumParticles = int(1e4) #all particles of the same mass (set low for testing)
+TotalNumParticles = int(1e6) #all particles of the same mass (set low for testing)
 ParticleMass = M_tot_grams / TotalNumParticles
 G = 6.67428*10**(-8) #cgs
 rho_0 = 1.0 #should be something like rho_200? or rhocrit?
+
+v_g = np.sqrt(G*M_tot_grams/a_cm)
+
 
 #fixed seed so repeatable (for testing)
 np.random.seed(1138)
@@ -133,6 +137,46 @@ def pdf_sample_accept_reject(pdf, samples=1, x_min=0, x_max=1, pdf_probe=int(1e3
 
     return rvs
 
+
+
+#def q(E):
+#    return np.sqrt(-1/v_g**2 * E)
+
+def q(radius,v):
+    return np.sqrt(-1/v_g**2 * E_tot(radius,v))
+
+def E_tot(radius,v): #per unit mass NOT BINDING E
+    return potential(radius) + 0.5*v**2
+
+def check_q(radius,v):
+    E =  E_tot(radius,v)
+    if E > 0:
+        return False
+
+    q = np.sqrt(-1 / v_g ** 2 * E)
+    if (q < 0) or (q > 1):
+        return False
+    else:
+        return True
+
+def f(radius,v): #f(E) as f(v)
+    #still need to calc v .... we want v back
+    #can we solve for v?
+    q = np.sqrt(-1/v_g**2 * E_tot(radius,v))
+
+    #if (q < 0) or (q > 1):
+    #    return None
+
+    return M_tot_grams/(8*np.sqrt(2)*(np.pi*a_cm*v_g)**3)*1/(1-q**2)**(2.5) * \
+    (3 * np.arcsin(q) + q*np.sqrt((1-q**2))*(1-2*q**2)*(8*q**4-8*q**2-3))
+
+
+def random_velocity(radius):
+    v = np.random.uniform(0,5e7) #0 to 500 km/s in cm/2
+    while not check_q(radius, v):
+        v = np.random.uniform(0,5e7) #0 to 500 km/s in cm/2
+    return v
+
 def main():
 
 
@@ -146,12 +190,34 @@ def main():
     print("Building particle locations (~15-20seconds) ...")
     particles = []
     for i in range(int(TotalNumParticles)):
-        particles.append(Particle())
+        p = Particle() #auto-pops a random position
+        v = random_velocity(p.r)
+        #so v is okay now
+        #get a random direction for v
+        theta,phi = random_on_sphere()
+        x,y,z = tpr2xyz(theta,phi) #unit sphere
+        #vector components
+        p.v_x = x*v
+        p.v_y = y*v
+        p.v_z = z*v
+
+        particles.append(p)
+
        # particles.append(Particle())
         #print(particles[i].spherical())
         #print(particles[i])
 
 
+    #sanity check velocity distribution is spherical
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    #since particles is random already, just plot the first 1000
+    x = [p.v_x/1e5 for p in particles[0:1000]]
+    y = [p.v_y/1e5for p in particles[0:1000]]
+    z = [p.v_z/1e5 for p in particles[0:1000]]
+
+    ax.scatter(x,y,z)
+    plt.show()
 
     # #sanity check the distributions
     # r_grid = np.linspace(1,1e6*pc2cm,10000)
