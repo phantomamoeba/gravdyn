@@ -5,6 +5,44 @@ __author__ = 'Dustin Davis'
 #reminder to self: convention here is theta is polar, phi is azimuth
 #everything in radians and cgs
 
+'''
+Comments:
+The code is somewhat commented below, but here is an overview.
+
+Notice: for my own sanity I kept everything in cgs (though, position and velocity in cm and cm/s is at a far
+too high precision, it is at least consistent. Also note that I insist on total energy being negative for 
+bound particles, so there are a few sign flips from the paper.
+
+For repeatability, the the RNG is seed with a fixed value.
+
+In short, I calcuate a random position on a unit sphere (theta and phi) taking into account the curved surface
+so the distribution of particles is uniformly random on that curverd surface. I then sample a random radius 
+from the Hernquist distro (inverted and sampled from a uniform [0,1] mapped back to the unitless enclosed
+mass from which the radius is taken).
+
+This position is then converted from spherical polar to cartessian.
+
+For each particle, the distribution f(E) is calculated (converting from d^3v to dE) and that is sampled
+using the accept-reject method to get an E and from that, a velocity (magnitude). (Note: it would be more
+efficient for the bid-sample to be taken from an analytical distribution that is guaranteed to be greater
+than the true distribution at all points, but closely follows it ... to keep the reject rate low for very
+peaky distributions). 
+
+A random direction (from a unit sphere) is chosen (much the same way the random position is chosen), and 
+that is converted to cartession coordinates and then the velocity is dotted into that vector to get the 
+components.
+
+Sanity checks are performed (checking that the spherical distributions are actually spherical, that the 
+velocity dispersion matches Fig.1 in Hernquist, that the f(E) distribution matches with Fig.2, etc)
+
+The output is a file (particles.dat) with the cartession positions and velocity components for all particles
+(again, in cgs).
+
+Run time (on my laptop) is about 6.5 minutes. 
+
+
+'''
+
 import numpy as np
 from scipy.integrate import quad
 from scipy.integrate import nquad
@@ -33,8 +71,6 @@ np.random.seed(1138)
 def rng(seed=None): #simple uniform (0,1)
     return np.random.random()
 
-def random_radius():#todo using Hernquist profile
-    pass
 
 def random_on_sphere():
     theta = np.arccos(2*rng()-1)
@@ -188,28 +224,6 @@ def f_E_sample_accept_reject(pdf, radius, samples=1):
     return rvs_x, rvs_y
 
 
-
-#def q(E):
-#    return np.sqrt(-1/v_g**2 * E)
-
-# def q(radius,v):
-#     return np.sqrt(-1/v_g**2 * E_tot(radius,v))
-#
-# def E_tot(radius,v):
-#     return phi_potential(radius) + 0.5*v**2
-
-#
-# def check_q(radius,v):
-#     E =  E_tot(radius,v)
-#     if E > 0:
-#         return False
-#
-#     q = np.sqrt(-1 / v_g ** 2 * E)
-#     if (q < 0) or (q > 1):
-#         return False
-#     else:
-#         return True
-
 #f(E) for a given radius .... E cannot be > phi_potential else would be unbounded
 #right ... so need the WHOLE potential (checking vs unbound) not just enclosed
 def f(radius):
@@ -229,13 +243,6 @@ def velocity(E,radius):
         print ("Error in velocity: E = %f, R = %f" % (E,radius))
     return np.sqrt(2*(E-Hernquist_potential(radius)))
 
-#based only on valid q ... not sampling from radius/energy pmf
-# def random_velocity(radius):
-#     v = np.random.uniform(0,5e7) #0 to 500 km/s in cm/2
-#     while not check_q(radius, v):
-#         v = np.random.uniform(0,5e7) #0 to 500 km/s in cm/2
-#     return v
-
 
 def getnearpos(array,value):
     idx = (np.abs(array-value)).argmin()
@@ -246,6 +253,9 @@ def re_pmf(r_grid,e_grid,r):
     return e_grid[i]
 
 def main():
+
+    sanity = False
+
     #for each particle
     #get its radius, then angular position
     #then translate to cartesian
@@ -253,10 +263,12 @@ def main():
     #write out to file (x,y,z,v_x,v_y,v_z)
 
     #sanity check f(E) for a radius
-    # f_E, E = f(a_cm)
-    # plt.plot(E, f_E)
-    # plt.show()
-    # exit()
+    if sanity:
+        f_E, E = f(a_cm)
+        plt.plot(E, f_E)
+        plt.show()
+        plt.close()
+
 
     #get all particle coords
     print("Building particles and writing to particles.dat ...")
@@ -288,66 +300,70 @@ def main():
     outfile.close()
     print("Particles built.")
 
-    #check velocity dispersion
-    #bin by radii
-    #calc std.dev of velocity in bin (on v_x or v_y or_v_z) and plot
 
-    print("Binning dispersion ...")
-    #not pythonic way to do this but I'm tired and not thinking straight
-    num_bins = 100
-    max_r = np.linspace(1,100,num_bins) #in kpc
-    max_r = np.append(max_r,[100000])
-    bins_vx = [[] for i in range(num_bins+1)]
-    for p in particles:
-       # i = np.argmax([e for e in Es if e < 0])
-        i = int(p.r / (pc2cm*1e3))
-        if i > num_bins:
-            i = num_bins
-        bins_vx[i].append(p.v_x)
+    if sanity:
+        #check velocity dispersion
+        #bin by radii
+        #calc std.dev of velocity in bin (on v_x or v_y or_v_z) and plot
 
-    sd = np.zeros(num_bins+1)
-    for i in range(num_bins+1):
-        sd[i] = np.std(bins_vx[i])/1e5 #cm/s to km/s
+        print("Binning dispersion ...")
+        #not pythonic way to do this but I'm tired and not thinking straight
+        num_bins = 100
+        max_r = np.linspace(1,100,num_bins) #in kpc
+        max_r = np.append(max_r,[100000])
+        bins_vx = [[] for i in range(num_bins+1)]
+        for p in particles:
+           # i = np.argmax([e for e in Es if e < 0])
+            i = int(p.r / (pc2cm*1e3))
+            if i > num_bins:
+                i = num_bins
+            bins_vx[i].append(p.v_x)
 
-    plt.title("Velocity Dispersion")
-    plt.ylabel("Dispersion [km/s]")
-    plt.xlabel("Radius in kpc")
-    plt.plot(max_r[:-1],sd[:-1])
-    plt.savefig("dispersion.png")
-    plt.show()
+        sd = np.zeros(num_bins+1)
+        for i in range(num_bins+1):
+            sd[i] = np.std(bins_vx[i]) #/1e5 #cm/s to km/s
 
-    #sanity check velocity distribution is spherical
-    print("building velocity distro plot ")
-    fig = plt.figure()
+        plt.title("Velocity Dispersion")
+        plt.ylabel(r"Dispersion [$\sigma$ / v$_g$]")
+        plt.xlabel("Radius in kpc")
+        plt.plot(max_r[:-1],sd[:-1]/v_g)
+        plt.savefig("dispersion.png")
+        plt.show()
+        plt.close()
 
-    ax = fig.add_subplot(111, projection='3d')
-    fig.suptitle("First 1000 (random) velocities (normed by v_g) ")
-    #since particles is random already, just plot the first 1000
-    maxidx = min(1000,len(particles))
-    x = [p.v_x/v_g for p in particles[0:maxidx]]
-    y = [p.v_y/v_g for p in particles[0:maxidx]]
-    z = [p.v_z/v_g for p in particles[0:maxidx]]
+        #sanity check velocity distribution is spherical
+        print("building velocity distro plot ")
+        fig = plt.figure()
 
-    ax.scatter(x,y,z)
-    plt.show()
+        ax = fig.add_subplot(111, projection='3d')
+        fig.suptitle("First 1000 (random) velocities (normed by v_g) ")
+        #since particles is random already, just plot the first 1000
+        maxidx = min(1000,len(particles))
+        x = [p.v_x/v_g for p in particles[0:maxidx]]
+        y = [p.v_y/v_g for p in particles[0:maxidx]]
+        z = [p.v_z/v_g for p in particles[0:maxidx]]
 
-    # #sanity check the distributions
-    # r_grid = np.linspace(1,1e6*pc2cm,10000)
-    # plt.plot(r_grid / pc2cm, mass_enclosed(r_grid) / M_tot_grams) #cdf
-    # plt.show()
-    # plt.plot(r_grid/pc2cm,dM(r_grid)) #pdf
-    # plt.show()
-    #
-    # re = [p.r/a_cm for p in particles]
-    # #limit the range to 100a
-    # plt.title("Inverse method")
-    # plt.hist(np.array(re),bins=1000,cumulative=True,density=True,range=[0,100])
-    # plt.show()
-    #
-    # rvs = pdf_sample_accept_reject(dM, samples=TotalNumParticles, x_min=1, x_max=1000 * a_cm)
-    # plt.title("Accept-Reject method") #check this vs inverse method
-    # plt.hist(np.array(rvs)/a_cm, bins=1000, cumulative=True, density=True, range=[0, 100])
-    # plt.show()
+        ax.scatter(x,y,z)
+        plt.show()
+        plt.close()
+
+        # #sanity check the distributions
+        # r_grid = np.linspace(1,1e6*pc2cm,10000)
+        # plt.plot(r_grid / pc2cm, mass_enclosed(r_grid) / M_tot_grams) #cdf
+        # plt.show()
+        # plt.plot(r_grid/pc2cm,dM(r_grid)) #pdf
+        # plt.show()
+        #
+        # re = [p.r/a_cm for p in particles]
+        # #limit the range to 100a
+        # plt.title("Inverse method")
+        # plt.hist(np.array(re),bins=1000,cumulative=True,density=True,range=[0,100])
+        # plt.show()
+        #
+        # rvs = pdf_sample_accept_reject(dM, samples=TotalNumParticles, x_min=1, x_max=1000 * a_cm)
+        # plt.title("Accept-Reject method") #check this vs inverse method
+        # plt.hist(np.array(rvs)/a_cm, bins=1000, cumulative=True, density=True, range=[0, 100])
+        # plt.show()
 
 
 if __name__ == '__main__':
